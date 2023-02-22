@@ -53,24 +53,15 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private boolean flagG = false;
 
     @Override
+//    Run on creating app
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        if (accelerometer != null) {
-            sensorManager.registerListener(this, accelerometer, 10000);
-            Log.d(TAG, "onCreate: Registered accelerometer listener");
-        }
-
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        if (gyroscope != null) {
-            sensorManager.registerListener(this, gyroscope, 10000);
-            Log.d(TAG, "onCreate: Registered gyroscope listener");
-        }
         btRecord = findViewById(R.id.btRecord);
         btRecord.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -126,18 +117,32 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     }
 
-    public void dataCollector(View arg0) {
-        String buttonText = btRecord.getText().toString();
+    public void startSensor(){
 
-        if (buttonText.equals("Start")) {
+        if (accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, 10000);
+            Log.d(TAG, "Registered accelerometer listener");
+        }
+        if (gyroscope != null) {
+            sensorManager.registerListener(this, gyroscope, 10000);
+            Log.d(TAG, "Registered gyroscope listener");
+        }
+    }
+    public void stopSensor(){
+        sensorManager.unregisterListener(this);
+        Log.d(TAG, "Stop sensor");
+    }
+
+    public void dataCollector(View arg0) {
+        if (record == false) {
             newName = repetition.getText().toString().trim();
             if (newName.equals("")){
                 Toast.makeText(getApplicationContext(), "Please input file name",
                         Toast.LENGTH_SHORT).show();
                 return;
                 }
-            audioFileName = Environment.getExternalStorageDirectory() + "/SensorData";
 
+            audioFileName = Environment.getExternalStorageDirectory() + "/SensorData";
             Toast.makeText(getApplicationContext(), "Recording",
                     Toast.LENGTH_SHORT).show();
 
@@ -156,7 +161,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             btRecord.setText("Stop");
         }
 
-        else if (buttonText.equals("Stop")){
+        else {
             record = false;
             repetition.setEnabled(true);
             btRecord.setText("Start");
@@ -184,14 +189,16 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         try {
             recorder.prepare();
+
         } catch (IOException e) {
             Log.e("start", "prepare() failed");
         }
-
+        startSensor();
         recorder.start();
     }
 
     private void stopRecording() {
+        stopSensor();
         recorder.stop();
         recorder.release();
         recorder = null;
