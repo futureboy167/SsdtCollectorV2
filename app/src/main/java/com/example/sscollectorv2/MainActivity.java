@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.widget.TextView;
-
+import java.lang.Thread;
 import com.example.sscollectorv2.databinding.ActivityMainBinding;
 import android.content.Context;
 import android.content.Intent;
@@ -27,6 +27,7 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -45,8 +46,9 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private String[] actions;
     private String action, newName;
     private String ax, ay, az, gx, gy, gz;
-    private String filePath, fileName, audioFileName;
-    private FileWriter writer;
+    private String filePath, fileName, audioFileName, logFileName;
+    private FileWriter writer,writer1;
+    private String log = "";
 
     private boolean record = false;
     private boolean flagA = false;
@@ -63,21 +65,30 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         btRecord = findViewById(R.id.btRecord);
-        btRecord.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View arg0) {
-                dataCollector(arg0);
-            }
-        });
-
-        repetition = findViewById(R.id.rep);
 
         filePath = Environment.getExternalStorageDirectory() + "/SensorData";
         File file = new File(Environment.getExternalStorageDirectory()
-                + "/SensorData");
+                ,"SensorData");
 
-        if (!file.exists())
-            file.mkdirs();
+        if (!file.exists()) {
+
+            Log.d(TAG, "CREATED"+file.mkdirs());
+        }
+        else{
+            Log.d(TAG,"EXIST");
+        }
+
+        btRecord.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View arg0) {
+                try {
+                    dataCollector(arg0);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        repetition = findViewById(R.id.rep);
 
         setAmbientEnabled();
     }
@@ -133,7 +144,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         Log.d(TAG, "Stop sensor");
     }
 
-    public void dataCollector(View arg0) {
+    public void dataCollector(View arg0) throws InterruptedException {
         if (record == false) {
             newName = repetition.getText().toString().trim();
             if (newName.equals("")){
@@ -149,15 +160,18 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             Date date = new Date(System.currentTimeMillis());
             String timeMilli = "" + date.getTime();
             record = true;
-            startRecording();
+
 
             fileName = timeMilli + "_" + newName + ".csv";
-            audioFileName += "/"+timeMilli + "_" + newName+".3gp";
+            audioFileName += "/"+timeMilli + "_" + newName+".wav";
+            logFileName = timeMilli + "_" + newName + ".txt";
             try {
+                writer1 = new FileWriter(new File(filePath, logFileName));
                 writer = new FileWriter(new File(filePath, fileName));
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            startRecording();
             btRecord.setText("Stop");
         }
 
@@ -180,7 +194,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         }
     }
 
-    private void startRecording() {
+    private void startRecording() throws InterruptedException {
         recorder = new MediaRecorder();
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
@@ -192,14 +206,32 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         } catch (IOException e) {
             Log.e("start", "prepare() failed");
+            System.out.println(""+e);
         }
         startSensor();
+        Thread.sleep(800);
         recorder.start();
+
+
+        Date date = new Date(System.currentTimeMillis());
+        String timeMilli = "" + date.getTime();
+        log += timeMilli;
     }
 
-    private void stopRecording() {
-        stopSensor();
+    private void stopRecording() throws InterruptedException {
         recorder.stop();
+        Thread.sleep(800);
+        stopSensor();
+
+        Date date = new Date(System.currentTimeMillis());
+        String timeMilli = "/" + date.getTime();
+        log += timeMilli;
+        try {
+            writer1.write(log);
+            writer1.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         recorder.release();
         recorder = null;
     }
